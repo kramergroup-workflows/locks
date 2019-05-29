@@ -1,0 +1,25 @@
+
+kind: pipeline
+name: default
+
+steps:
+
+- name: docker-agent
+  image: banzaicloud/drone-kaniko
+  settings:
+    username: 
+      from_secret: docker-hub-username
+    password: 
+      from_secret: docker-hub-password
+    repo: registry.kramergroup.science/workflows/lock-agent
+    dockerfile: build/docker/lock-agent/Dockerfile
+
+- name: docker-cli
+  image: banzaicloud/drone-kaniko
+  settings:
+    username: 
+      from_secret: docker-hub-username
+    password: 
+      from_secret: docker-hub-password
+    repo: registry.kramergroup.science/workflows/lock-cli
+    dockerfile: build/docker/Dockerfile.cli
