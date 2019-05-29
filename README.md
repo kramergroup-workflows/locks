@@ -1,3 +1,5 @@
+[![Build Status](https://drone-ci-kramergroup.serveo.net/api/badges/kramergroup-workflows/locks/status.svg)](https://drone-ci-kramergroup.serveo.net/kramergroup-workflows/locks)
+
 # Lock Management
 
 This repository contains client-side code of a simple lock service. The locks can be used in many situation, but 
