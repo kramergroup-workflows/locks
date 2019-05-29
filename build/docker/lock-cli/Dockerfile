@@ -5,7 +5,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /go/src/github.com/kramergroup-workflows/lock-agent
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/lockcli cmd/lockcli/main.o
+RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/lockcli cmd/lockcli/main.go
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
