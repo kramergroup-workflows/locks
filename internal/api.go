@@ -1,7 +1,9 @@
 package agent
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -121,6 +123,15 @@ func (p *Poller) poll(callback func(lock.Lock)) {
 // -----------------------------------------------------------------------------
 
 /*
+queryParameter models the parameeters send as query strings to the API server as
+part of CRUD calls.
+*/
+type queryParameter struct {
+	Name  string
+	Value string
+}
+
+/*
 LockAPI represents the Lock API endpoint
 */
 type LockAPI struct {
@@ -128,8 +139,8 @@ type LockAPI struct {
 }
 
 // NewLockAPI creates a new lock API instance
-func NewLockAPI(endpoint string) LockAPI {
-	return LockAPI{
+func NewLockAPI(endpoint string) lock.API {
+	return &LockAPI{
 		endpoint: endpoint,
 	}
 }
@@ -137,34 +148,123 @@ func NewLockAPI(endpoint string) LockAPI {
 /*
 DeleteLock deletes the lock with id
 */
-func (a *LockAPI) DeleteLock(id string) {
+func (a *LockAPI) Delete(id string) error {
+
+	params := []queryParameter{
+		queryParameter{Name: "id", Value: id},
+	}
+
+	_, err := a.crud("DELETE", nil, params)
+	if err != nil {
+		fmt.Printf("ERROR DELETE: %s", err)
+	}
+	return err
+}
+
+/*
+Release changes the status of a lock to released.
+*/
+func (a *LockAPI) Release(id string) error {
+
+	params := []queryParameter{
+		queryParameter{Name: "id", Value: id},
+	}
+
+	_, err := a.crud("PATCH", nil, params)
+	if err != nil {
+		fmt.Printf("ERROR PATCH: %s", err)
+	}
+	return err
+}
+
+/*
+Create registers a new lock with the API server, sets its status to "locked"
+and returns the created lock
+*/
+func (a *LockAPI) Create(workflow string, namespace string) (lock.Lock, error) {
+
+	lock := lock.Lock{
+		Workflow:  workflow,
+		Namespace: namespace,
+	}
+
+	locJSON, err := json.Marshal(lock)
+
+	res, err := a.crud("POST", locJSON, nil)
+	if err != nil {
+		fmt.Printf("ERROR POST: %s", err)
+		return lock, err
+	}
+
+	if err := json.Unmarshal(res, &lock); err != nil {
+		log.Printf("ERROR ParseGetResponse: %s", err)
+		return lock, err
+	}
+
+	return lock, nil
+
+}
+
+/*
+Get obtains the lock with id
+*/
+func (a *LockAPI) Get(id string) (lock.Lock, error) {
+
+	var lock lock.Lock
+
+	params := []queryParameter{
+		queryParameter{Name: "id", Value: id},
+	}
+
+	body, err := a.crud("GET", nil, params)
+	if err != nil {
+		fmt.Printf("ERROR PATCH: %s", err)
+		return lock, err
+	}
+
+	err = json.Unmarshal([]byte(body), &lock)
+	return lock, err
+}
+
+/*
+crud is the main communication routine to send requests to the API server and collects
+the response in a []byte array.
+
+The method returns an error if the returned status code differs from 200.
+*/
+func (a *LockAPI) crud(method string, body []byte, queryParameters []queryParameter) ([]byte, error) {
 
 	url, err := url.Parse(a.endpoint)
 	if err != nil {
-		log.Print("URLMalformated: ", err)
-		return
+		log.Fatal("URLMalformated: ", err)
+		return nil, err
 	}
 
 	q := url.Query()
-	q.Set("id", id)
+	for _, param := range queryParameters {
+		q.Set(param.Name, param.Value)
+	}
 	url.RawQuery = q.Encode()
 
 	// Build the request
-	req, err := http.NewRequest("DELETE", url.String(), nil)
+	req, err := http.NewRequest(method, url.String(), bytes.NewBuffer(body))
 	if err != nil {
-		log.Print("NewRequest: ", err)
-		return
+		log.Fatal("NewRequest: ", err)
+		return nil, err
 	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Print("Do: ", err)
-		return
+		log.Fatal("Do: ", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		log.Print("DELETE Response error")
+	if resp.StatusCode == 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		return body, err
 	}
+
+	return nil, fmt.Errorf("API returned status code %d", resp.StatusCode)
 
 }
