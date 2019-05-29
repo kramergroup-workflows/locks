@@ -13,6 +13,7 @@ steps:
       from_secret: docker-hub-password
     repo: registry.kramergroup.science/workflows/lock-agent
     dockerfile: build/docker/lock-agent/Dockerfile
+  depends_on: [ clone ]
 
 - name: docker-cli
   image: banzaicloud/drone-kaniko
@@ -23,3 +24,4 @@ steps:
       from_secret: docker-hub-password
     repo: registry.kramergroup.science/workflows/lock-cli
     dockerfile: build/docker/Dockerfile.cli
+  depends_on: [ clone ]
