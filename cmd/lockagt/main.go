@@ -33,7 +33,7 @@ func main() {
 		log.Printf("Resuming workflow %s/%s", lock.Namespace, lock.Workflow)
 		err := argoAPI.ResumeWorkflow(lock.Workflow, lock.Namespace)
 		if err == nil {
-			lockAPI.DeleteLock(lock.ID)
+			lockAPI.Delete(lock.ID)
 		}
 	})
 
