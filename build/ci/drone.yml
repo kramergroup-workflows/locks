@@ -23,5 +23,5 @@ steps:
     password: 
       from_secret: docker-hub-password
     repo: registry.kramergroup.science/workflows/lock-cli
-    dockerfile: build/docker/Dockerfile.cli
+    dockerfile: build/docker/lock-cli/Dockerfile
   depends_on: [ clone ]
