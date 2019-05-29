@@ -18,20 +18,20 @@ Poller periodically polls the lock API for
 released locks
 */
 type Poller struct {
-	endpoint string
-	period   time.Duration
-	stop     chan bool
+	api    lock.API
+	period time.Duration
+	stop   chan bool
 }
 
 /*
-New creates a new Poller
+NewPoller creates a new Poller
 */
-func NewPoller(api LockAPI, period time.Duration) Poller {
+func NewPoller(api lock.API, period time.Duration) Poller {
 
 	return Poller{
-		endpoint: api.endpoint,
-		period:   period,
-		stop:     nil,
+		api:    api,
+		period: period,
+		stop:   nil,
 	}
 
 }
@@ -78,44 +78,14 @@ poll implements the polling logic
 */
 func (p *Poller) poll(callback func(lock.Lock)) {
 
-	url, err := url.Parse(p.endpoint)
-	if err != nil {
-		log.Print("URLMalformated: ", err)
-		return
-	}
+	locks, err := p.api.GetWithStatus("released")
 
-	q := url.Query()
-	q.Set("status", "released")
-	url.RawQuery = q.Encode()
-
-	// Build the request
-	req, err := http.NewRequest("GET", url.String(), nil)
-	if err != nil {
-		log.Print("NewRequest: ", err)
-		return
-	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Print("Do: ", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Print("Read: ", err)
-			return
-		}
-		locks := make([]lock.Lock, 0)
-		json.Unmarshal(body, &locks)
-
+	if err == nil {
 		for _, lock := range locks {
 			callback(lock)
 		}
 	} else {
-		log.Printf("Poll: API returned error - Response code: %d", resp.StatusCode)
+		// Ignore polling errors
 	}
 
 }
@@ -146,7 +116,7 @@ func NewLockAPI(endpoint string) lock.API {
 }
 
 /*
-DeleteLock deletes the lock with id
+Delete deletes the lock with id
 */
 func (a *LockAPI) Delete(id string) error {
 
@@ -224,6 +194,30 @@ func (a *LockAPI) Get(id string) (lock.Lock, error) {
 
 	err = json.Unmarshal([]byte(body), &lock)
 	return lock, err
+}
+
+/*
+GetWithStatus returns all locks with the given status
+*/
+func (a *LockAPI) GetWithStatus(status string) ([]lock.Lock, error) {
+
+	q := []queryParameter{
+		queryParameter{
+			Name:  "status",
+			Value: status,
+		},
+	}
+
+	body, err := a.crud("GET", nil, q)
+	if err != nil {
+		fmt.Printf("ERROR GET: %s", err)
+		return nil, err
+	}
+
+	locks := make([]lock.Lock, 0)
+	json.Unmarshal(body, &locks)
+
+	return locks, nil
 }
 
 /*

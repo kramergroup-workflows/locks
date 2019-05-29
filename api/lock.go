@@ -22,4 +22,5 @@ type API interface {
 	Release(id string) error
 	Create(workflow string, namespace string) (Lock, error)
 	Get(id string) (Lock, error)
+	GetWithStatus(status string) ([]Lock, error)
 }
