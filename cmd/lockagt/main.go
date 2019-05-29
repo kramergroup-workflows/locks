@@ -30,10 +30,12 @@ func main() {
 	lockAPI := agent.NewLockAPI(*endpointPtr)
 	poller := agent.NewPoller(lockAPI, time.Duration(*intervalPtr)*time.Second)
 	poller.Start(func(lock lock.Lock) {
-		log.Printf("Resuming workflow %s/%s", lock.Namespace, lock.Workflow)
 		err := argoAPI.ResumeWorkflow(lock.Workflow, lock.Namespace)
 		if err == nil {
+			log.Printf("Resuming workflow %s/%s", lock.Namespace, lock.Workflow)
 			lockAPI.Delete(lock.ID)
+		} else {
+			log.Printf("ERROR resuming workflow: %s", err)
 		}
 	})
 

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"flag"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -29,6 +30,9 @@ func NewArgoAPI() ArgoAPI {
 		if err != nil {
 			panic(err.Error())
 		}
+		log.Print("Running in-cluster mode")
+	} else {
+		log.Printf("Using kubernetes configuration from %s", *kubeconfigPtr)
 	}
 	wfClient := wfclientset.NewForConfigOrDie(config)
 
